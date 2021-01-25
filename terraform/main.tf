@@ -1,13 +1,4 @@
 # ====================
-# Provider
-# ====================
-
-provider "aws" {
-  region = "ap-northeast-1"
-  profile = "yao-test"
-}
-
-# ====================
 # VPC
 # ====================
 
@@ -168,7 +159,6 @@ resource "aws_instance" "TeraTestVM1" {
   ami                    = data.aws_ami.example.image_id
   vpc_security_group_ids = [aws_security_group.TeraTest-SG.id]
   subnet_id              = aws_subnet.public_subnet1.id
-  key_name               = aws_key_pair.deployer.id
   instance_type          = "t2.micro"
 
   tags = {
@@ -188,10 +178,7 @@ resource "aws_eip" "TeraTest-EIP" {
 # Key Pair
 # ====================
 
-resource "aws_key_pair" "deployer" {
-  key_name   = "key-yao"
-  public_key = ""
-}
+
 
 # ====================
 # Security Group
