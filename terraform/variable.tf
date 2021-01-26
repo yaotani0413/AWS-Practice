@@ -1,7 +1,5 @@
-variable "access_key" {}
-variable "secret_key" {}
-variable "key_name" {}
-variable "public_key_path" {}
+# variable "access_key" {}
+# variable "secret_key" {}
 variable "region" {
   default = "ap-northeast-1"
 }
@@ -15,13 +13,13 @@ variable "ami" {
 }
 
 variable "key_name" {
-  default = "key-yao"
+  default = "key-yao2"
 }
 
 variable "public_key_path" {
-  default = "~/.ssh/terraform.pub"
+  default = "~/key-yao2.pem"
 }
 
 variable "instance_type" {
-  default = "a1.2xlarge"
+  default = "t2.micro"
 }

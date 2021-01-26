@@ -135,39 +135,43 @@ resource "aws_route_table_association" "public_subnet2" {
 # ====================
 
 # 最新版のAmazonLinux2のAMI情報
-data "aws_ami" "example" {
-  most_recent = true
-  owners      = ["amazon"]
+# data "aws_ami" "example" {
+#   most_recent = true
+#   owners      = ["amazon"]
 
-  filter {
-    name   = "architecture"
-    values = ["x86_64"]
-  }
+#   filter {
+#     name   = "architecture"
+#     values = ["x86_64"]
+#   }
 
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
+#   filter {
+#     name   = "root-device-type"
+#     values = ["ebs"]
+#   }
 
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*"]
-  }
+#   filter {
+#     name   = "name"
+#     values = ["amzn2-ami-hvm-*"]
+#   }
 
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
+#   filter {
+#     name   = "virtualization-type"
+#     values = ["hvm"]
+#   }
 
-  filter {
-    name   = "block-device-mapping.volume-type"
-    values = ["gp2"]
-  }
+#   filter {
+#     name   = "block-device-mapping.volume-type"
+#     values = ["gp2"]
+#   }
 
-  filter {
-    name   = "state"
-    values = ["available"]
-  }
+#   filter {
+#     name   = "state"
+#     values = ["available"]
+#   }
+# }
+
+data aws_ssm_parameter amzn2_ami {
+  name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
 }
 
 # ====================
@@ -175,8 +179,8 @@ data "aws_ami" "example" {
 # ====================
 
 resource "aws_instance" "TeraTestVM1" {
-  count                   = 1
-  ami                     = var.amiimage_id
+  # count                   = 1
+  ami = data.aws_ssm_parameter.amzn2_ami.value
   vpc_security_group_ids = [aws_security_group.TeraTest-SG.id]
   subnet_id              = aws_subnet.public_subnet1.id
   instance_type           = var.instance_type
@@ -200,7 +204,7 @@ resource "aws_eip" "TeraTest-EIP" {
 # ====================
 
 resource "aws_key_pair" "auth" {
-  key_name   = "${var.key_name}"
+  key_name   = var.key_name
   public_key = "${file(var.public_key_path)}"
 }
 
