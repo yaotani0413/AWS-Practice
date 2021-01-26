@@ -1,4 +1,23 @@
 # ====================
+# Provider
+# ====================
+
+provider "aws" {
+  region = "ap-northeast-1"
+  profile = "yao-test"
+}
+
+terraform {
+  required_version = "0.14.5"
+  backend "s3" {
+    bucket  = "terrabucket-yao"
+    key     = "terraform.tfstate"
+    region  = "ap-northeast-1"
+    profile = "yao-test"
+  }
+}
+
+# ====================
 # VPC
 # ====================
 
@@ -156,11 +175,13 @@ data "aws_ami" "example" {
 # ====================
 
 resource "aws_instance" "TeraTestVM1" {
-  ami                    = data.aws_ami.example.image_id
+  count                   = 1
+  ami                     = var.amiimage_id
   vpc_security_group_ids = [aws_security_group.TeraTest-SG.id]
   subnet_id              = aws_subnet.public_subnet1.id
-  instance_type          = "t2.micro"
-
+  instance_type           = var.instance_type
+  disable_api_termination = false
+  key_name                = var.key_name
   tags = {
     Name = "TeraTest1"
   }
@@ -178,7 +199,10 @@ resource "aws_eip" "TeraTest-EIP" {
 # Key Pair
 # ====================
 
-
+resource "aws_key_pair" "auth" {
+  key_name   = "${var.key_name}"
+  public_key = "${file(var.public_key_path)}"
+}
 
 # ====================
 # Security Group
