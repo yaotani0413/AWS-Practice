@@ -13,11 +13,13 @@ variable "ami" {
 }
 
 variable "key_name" {
+  type        = "string"
+  description = "keypair name"
   default = "key-yao2"
 }
 
 variable "public_key_path" {
-  default = "~/key-yao2.pem"
+  default = "~/.ssh/terraform.pub"
 }
 
 variable "instance_type" {
