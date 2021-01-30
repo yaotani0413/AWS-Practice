@@ -250,3 +250,39 @@ resource "aws_security_group_rule" "out_all" {
   to_port           = 0
   protocol          = "-1"
 }
+
+# ====================
+# Route53
+# ====================
+
+resource "aws_route53_zone" "myzone" {
+   name = "yao3dr.net"
+}
+
+
+# ====================
+# RDS
+# ====================
+
+# サブネットグループ
+# resource "aws_db_subnet_group" "TerraDB-SG" {
+#   name       = "TerraDB-SG"
+#   subnet_ids = [aws_subnet.private_subnet1.id, aws_subnet.private_subnet2.id]
+
+#   tags = {
+#     Name = "TerraDB-SG"
+#   }
+# }
+
+# インスタンス
+# resource "aws_db_instance" "TerraDB" {
+#   allocated_storage    = 20
+#   storage_type         = "gp2"
+#   engine               = "mysql"
+#   engine_version       = "5.7"
+#   instance_class       = "db.t2.micro"
+#   name                 = "mydb"
+#   username             = "yao"
+#   password             = "testtest"
+#   parameter_group_name = "default.mysql5.7"
+# }
