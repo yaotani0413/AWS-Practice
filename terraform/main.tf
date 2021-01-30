@@ -34,7 +34,6 @@ resource "aws_vpc" "main" {
 # ====================
 
 resource "aws_subnet" "public_subnet1" {
-  # 先程作成したVPCを参照し、そのVPC内にSubnetを立てる
   vpc_id = "${aws_vpc.main.id}"
 
   availability_zone = "ap-northeast-1a"
@@ -47,7 +46,6 @@ resource "aws_subnet" "public_subnet1" {
 }
 
 resource "aws_subnet" "public_subnet2" {
-  # 先程作成したVPCを参照し、そのVPC内にSubnetを立てる
   vpc_id = "${aws_vpc.main.id}"
 
   availability_zone = "ap-northeast-1c"
@@ -60,7 +58,6 @@ resource "aws_subnet" "public_subnet2" {
 }
 
 resource "aws_subnet" "private_subnet1" {
-  # 先程作成したVPCを参照し、そのVPC内にSubnetを立てる
   vpc_id = "${aws_vpc.main.id}"
 
   availability_zone = "ap-northeast-1a"
@@ -73,7 +70,6 @@ resource "aws_subnet" "private_subnet1" {
 }
 
 resource "aws_subnet" "private_subnet2" {
-  # 先程作成したVPCを参照し、そのVPC内にSubnetを立てる
   vpc_id = "${aws_vpc.main.id}"
 
   availability_zone = "ap-northeast-1c"
@@ -96,8 +92,10 @@ resource "aws_internet_gateway" "main_GW" {
   }
 }
 
-#### Route Table ####
-# https://www.terraform.io/docs/providers/aws/r/route_table.html
+# ====================
+# Route Table
+# ====================
+
 resource "aws_route_table" "main_RT" {
   vpc_id = "${aws_vpc.main.id}"
 
@@ -121,13 +119,13 @@ resource "aws_route" "public" {
 # ====================
 
 resource "aws_route_table_association" "public_subnet1" {
-  subnet_id      = "${aws_subnet.public_subnet1.id}"
-  route_table_id = "${aws_route_table.main_RT.id}"
+  subnet_id      = aws_subnet.public_subnet1.id
+  route_table_id = aws_route_table.main_RT.id
 }
 
 resource "aws_route_table_association" "public_subnet2" {
-  subnet_id      = "${aws_subnet.public_subnet2.id}"
-  route_table_id = "${aws_route_table.main_RT.id}"
+  subnet_id      = aws_subnet.public_subnet2.id
+  route_table_id = aws_route_table.main_RT.id
 }
 
 # ====================
@@ -135,41 +133,6 @@ resource "aws_route_table_association" "public_subnet2" {
 # ====================
 
 # 最新版のAmazonLinux2のAMI情報
-# data "aws_ami" "example" {
-#   most_recent = true
-#   owners      = ["amazon"]
-
-#   filter {
-#     name   = "architecture"
-#     values = ["x86_64"]
-#   }
-
-#   filter {
-#     name   = "root-device-type"
-#     values = ["ebs"]
-#   }
-
-#   filter {
-#     name   = "name"
-#     values = ["amzn2-ami-hvm-*"]
-#   }
-
-#   filter {
-#     name   = "virtualization-type"
-#     values = ["hvm"]
-#   }
-
-#   filter {
-#     name   = "block-device-mapping.volume-type"
-#     values = ["gp2"]
-#   }
-
-#   filter {
-#     name   = "state"
-#     values = ["available"]
-#   }
-# }
-
 data aws_ssm_parameter amzn2_ami {
   name = "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
 }
@@ -225,6 +188,15 @@ resource "aws_security_group" "TeraTest-SG" {
   }
 }
 
+resource "aws_security_group" "TeraTestforMySQL" {
+  vpc_id = aws_vpc.main.id
+  name   = "TeraTestforMySQL"
+
+  tags = {
+    Name = "TeraTestforMySQL"
+  }
+}
+
 ### インバウンドルール(ssh接続用)
 resource "aws_security_group_rule" "in_ssh" {
   security_group_id = aws_security_group.TeraTest-SG.id
@@ -243,6 +215,15 @@ resource "aws_security_group_rule" "in_icmp" {
   from_port         = -1
   to_port           = -1
   protocol          = "icmp"
+}
+### インバウンドルール(DB接続用)
+resource "aws_security_group_rule" "db" {
+  security_group_id = aws_security_group.TeraTestforMySQL.id
+  type = "ingress"
+  from_port = 3306
+  to_port = 3306
+  protocol = "tcp"
+  cidr_blocks = [aws_vpc.main.cidr_block]
 }
 
 ### アウトバウンドルール(全開放)
@@ -276,24 +257,43 @@ resource "aws_route53_record" "terra" {
 # ====================
 
 # サブネットグループ
-# resource "aws_db_subnet_group" "TerraDB-SG" {
-#   name       = "TerraDB-SG"
-#   subnet_ids = [aws_subnet.private_subnet1.id, aws_subnet.private_subnet2.id]
+resource "aws_db_subnet_group" "TerraDB-SG" {
+  name       = "terradb_sg"
+  subnet_ids = [aws_subnet.private_subnet1.id, aws_subnet.private_subnet2.id]
 
-#   tags = {
-#     Name = "TerraDB-SG"
-#   }
-# }
+  tags = {
+    Name = "terradb_sg"
+  }
+}
 
 # インスタンス
-# resource "aws_db_instance" "TerraDB" {
-#   allocated_storage    = 20
-#   storage_type         = "gp2"
-#   engine               = "mysql"
-#   engine_version       = "5.7"
-#   instance_class       = "db.t2.micro"
-#   name                 = "mydb"
-#   username             = "yao"
-#   password             = "testtest"
-#   parameter_group_name = "default.mysql5.7"
+resource "aws_db_instance" "TerraDB" {
+  allocated_storage    = 20
+  storage_type         = "gp2"
+  engine               = "mysql"
+  engine_version       = "5.7.31"
+  instance_class       = "db.t2.micro"
+  name                 = "TerraDB"
+  username             = "yao"
+  password             = "testtest"
+  # parameter_group_name = "default.mysql5.7.31"
+  vpc_security_group_ids  = [aws_security_group.TeraTestforMySQL.id]
+  db_subnet_group_name = aws_db_subnet_group.TerraDB-SG.name
+  skip_final_snapshot = true
+}
+
+# パラメーター
+# resource "aws_db_parameter_group" "default" {
+#   name   = "rds-pg"
+#   family = "mysql5.6"
+
+#   parameter {
+#     name  = "character_set_server"
+#     value = "utf8"
+#   }
+
+#   parameter {
+#     name  = "character_set_client"
+#     value = "utf8"
+#   }
 # }
