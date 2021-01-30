@@ -197,6 +197,10 @@ resource "aws_instance" "TeraTestVM1" {
 resource "aws_eip" "TeraTest-EIP" {
   instance = aws_instance.TeraTestVM1.id
   vpc      = true
+
+  tags = {
+    Name = "TeraTest-EIP"
+  }
 }
 
 # ====================
@@ -259,6 +263,13 @@ resource "aws_route53_zone" "myzone" {
    name = "yao3dr.net"
 }
 
+resource "aws_route53_record" "terra" {
+  zone_id = aws_route53_zone.myzone.zone_id
+  name    = "terra"
+  type    = "A"
+  ttl     = "300"
+  records = [aws_eip.TeraTest-EIP.public_ip]
+}
 
 # ====================
 # RDS
