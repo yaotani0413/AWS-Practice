@@ -216,6 +216,17 @@ resource "aws_security_group_rule" "in_icmp" {
   to_port           = -1
   protocol          = "icmp"
 }
+
+### インバウンドルール(httpアクセス用)
+resource "aws_security_group_rule" "in_http" {
+  security_group_id = aws_security_group.TeraTest-SG.id
+  type              = "ingress"
+  cidr_blocks       = ["0.0.0.0/0"]
+  from_port         = 80
+  to_port           = 80
+  protocol          = "tcp"
+}
+
 ### インバウンドルール(DB接続用)
 resource "aws_security_group_rule" "db" {
   security_group_id = aws_security_group.TeraTestforMySQL.id
@@ -297,3 +308,51 @@ resource "aws_db_instance" "TerraDB" {
 #     value = "utf8"
 #   }
 # }
+
+# ====================
+# ALB
+# ====================
+
+# ALB
+resource "aws_lb" "TerraALB" {
+  name                       = "TerraALB"
+  load_balancer_type         = "application"
+  internal                   = false
+  idle_timeout               = 60
+  security_groups    = [aws_security_group.TeraTest-SG.id]
+  subnets            = [aws_subnet.public_subnet1.id, aws_subnet.public_subnet2.id]
+  # enable_deletion_protection = true
+
+  tags = {
+    Name = "TerraALB"
+  }
+}
+
+# ターゲットグループ
+resource "aws_lb_target_group" "TerraTG" {
+  name                 = "TerraTG"
+  port                 = 80
+  protocol             = "HTTP"
+  vpc_id               = aws_vpc.main.id
+
+  health_check {
+    path                = "/"
+    port                = 80
+    healthy_threshold   = 5
+    unhealthy_threshold = 2
+    timeout             = 5
+    matcher             = 200
+  }
+}
+
+# リスナー
+resource "aws_lb_listener" "front_end" {
+  load_balancer_arn = aws_lb.TerraALB.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.TerraTG.arn
+  }
+}
