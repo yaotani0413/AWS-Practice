@@ -154,15 +154,37 @@ resource "aws_instance" "TeraTestVM1" {
   }
 }
 
+resource "aws_instance" "TeraTestVM2" {
+  # count                   = 1
+  ami = data.aws_ssm_parameter.amzn2_ami.value
+  vpc_security_group_ids = [aws_security_group.TeraTest-SG.id]
+  subnet_id              = aws_subnet.public_subnet2.id
+  instance_type           = var.instance_type
+  disable_api_termination = false
+  key_name                = var.key_name
+  tags = {
+    Name = "TeraTest2"
+  }
+}
+
 # ====================
 # Elastic IP 
 # ====================
-resource "aws_eip" "TeraTest-EIP" {
+resource "aws_eip" "TeraTest-EIP1" {
   instance = aws_instance.TeraTestVM1.id
   vpc      = true
 
   tags = {
-    Name = "TeraTest-EIP"
+    Name = "TeraTest-EIP1"
+  }
+}
+
+resource "aws_eip" "TeraTest-EIP2" {
+  instance = aws_instance.TeraTestVM2.id
+  vpc      = true
+
+  tags = {
+    Name = "TeraTest-EIP2"
   }
 }
 
@@ -227,6 +249,16 @@ resource "aws_security_group_rule" "in_http" {
   protocol          = "tcp"
 }
 
+### インバウンドルール(httpsアクセス用)
+resource "aws_security_group_rule" "in_https" {
+  security_group_id = aws_security_group.TeraTest-SG.id
+  type              = "ingress"
+  cidr_blocks       = ["0.0.0.0/0"]
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+}
+
 ### インバウンドルール(DB接続用)
 resource "aws_security_group_rule" "db" {
   security_group_id = aws_security_group.TeraTestforMySQL.id
@@ -260,7 +292,19 @@ resource "aws_route53_record" "terra" {
   name    = "terra"
   type    = "A"
   ttl     = "300"
-  records = [aws_eip.TeraTest-EIP.public_ip]
+  records = [aws_eip.TeraTest-EIP1.public_ip]
+}
+
+resource "aws_route53_record" "www" {
+  zone_id = aws_route53_zone.myzone.zone_id
+  name    = "terraalb"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.TerraALB.dns_name
+    zone_id                = aws_lb.TerraALB.zone_id
+    evaluate_target_health = true
+  }
 }
 
 # ====================
@@ -345,8 +389,20 @@ resource "aws_lb_target_group" "TerraTG" {
   }
 }
 
+resource "aws_lb_target_group_attachment" "TG-attach1" {
+  target_group_arn = aws_lb_target_group.TerraTG.arn
+  target_id        = aws_instance.TeraTestVM1.id
+  port             = 80
+}
+
+resource "aws_lb_target_group_attachment" "TG-attach2" {
+  target_group_arn = aws_lb_target_group.TerraTG.arn
+  target_id        = aws_instance.TeraTestVM2.id
+  port             = 80
+}
+
 # リスナー
-resource "aws_lb_listener" "front_end" {
+resource "aws_lb_listener" "front_end1" {
   load_balancer_arn = aws_lb.TerraALB.arn
   port              = "80"
   protocol          = "HTTP"
@@ -356,3 +412,39 @@ resource "aws_lb_listener" "front_end" {
     target_group_arn = aws_lb_target_group.TerraTG.arn
   }
 }
+
+resource "aws_lb_listener" "front_end2" {
+  load_balancer_arn = aws_lb.TerraALB.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = "arn:aws:acm:ap-northeast-1:529323424893:certificate/85c81d1d-c7a8-474b-b62b-ac2d270fcc21"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.TerraTG.arn
+  }
+}
+
+resource "aws_lb_listener_certificate" "example" {
+  listener_arn    = aws_lb_listener.front_end2.arn
+  certificate_arn = aws_acm_certificate.cert.arn
+}
+
+# ====================
+# ACM
+# ====================
+
+resource "aws_acm_certificate" "cert" {
+  domain_name       = "*.yao3dr.net"
+  validation_method = "DNS"
+
+  tags = {
+    Environment = "test"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
